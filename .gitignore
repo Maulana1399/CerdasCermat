@@ -27,3 +27,7 @@ Homestead.yaml
 Thumbs.db
 
 .env.docker
+
+# AI development skills
+/.agents
+/.claude
