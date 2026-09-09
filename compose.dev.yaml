@@ -1,0 +1,80 @@
+# ------------------------------------------------------------------
+# Override DEVELOPMENT untuk Lokasi Lomba Cerdas Cermat.
+#
+# MODE DEVELOPMENT (hot-reload source, tanpa rebuild image):
+#
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+#
+# Menjalankan ulang stack memakai compose.yaml + override ini. Source
+# Laravel yang "sering berubah" langsung di-bind-mount dari host ke
+# lomba-app, dan OPcache dev diaktifkan (validasi timestamp), sehingga:
+#   - ubah Blade  -> refresh halaman -> langsung terlihat (tanpa build)
+#   - ubah PHP    -> refresh halaman -> langsung terlihat (tanpa build)
+#   - ubah route  -> refresh halaman -> langsung terlihat (tanpa build)
+# Static JS tetap ter-bind-mount via lomba-web (compose.yaml) -> langsung.
+# Asset JS/CSS pada mode dev memakai konfigurasi nginx KHUSUS dev
+# (docker/nginx/default.dev.conf): policy no-cache — browser selalu
+# memvalidasi ulang, sehingga perubahan JS/CSS terlihat tanpa rebuild
+# walau `?v=filemtime()` di Blade masih dihitung dari filesystem image.
+#
+# UNTUK KEMBALI KE PRODUKSI (image bake, opcache stale-check off, asset
+# cache 30 hari), cukup:
+#
+#   docker compose -f compose.yaml up -d --build
+#
+# Yang TIDAK diubah mode ini: port, network, database, GameEngine, API,
+# behavior aplikasi, maupun Dockerfile/image produksi.
+#
+# ------------------------------------------------------------------
+# KEPUTUSAN DESAIN (penting dibaca):
+#
+# 1) database/ TIDAK di-bind-mount, tetap memakai named volume `lomba-db`.
+#    Alasan: (a) mkdir path mount /var/www/lomba/database adalah named
+#    volume berisi database.sqlite live — mem-bind-mount host ke sana akan
+#    men-shadow data SQLite (risiko reset/kehilangan data); (b) entrypoint
+#    produksi menjalankan chown -R pada /var/www/lomba/database — bind
+#    mount host di bawahnya akan ikut ter-chown ke www-data, memutus akses
+#    tulis user host di repo. Migrasi/seeders jarang berubah saat UAT;
+#    jika perlu, pakai lomba-tools (profile tools) tanpa rebuild image.
+#
+# 2) storage/ dan bootstrap/cache/ tetap named volume (data + cache),
+#    persis seperti produksi. Compiled Blade mengarah ke storage volume,
+#    Laravel menaruh hasil kompilasi di sana; mtime sumber dicek otomatis.
+#
+# 3) OPcache: prod memakai docker/php/php.ini -> zz-app.ini dengan
+#    validate_timestamps = 0 (image). File berikut (zzz-dev-opcache.ini)
+#    dimuat SETELAH zz-app.ini di conf.d sehingga mengaktifkan validasi
+#    timestamp HANYA pada mode development; di produksi file ini tidak
+#    ikut ter-pasang sehingga tetap validate_timestamps = 0.
+# ------------------------------------------------------------------
+name: lomba
+
+services:
+  lomba-app:
+    # Bind-mount source kode yang sering berubah. Tidak menyentuh
+    # volume data (lomba-db / lomba-storage / lomba-bootstrap-cache)
+    # yang tetap dipasang dari compose.yaml.
+    volumes:
+      - ./app:/var/www/lomba/app
+      - ./resources:/var/www/lomba/resources
+      - ./routes:/var/www/lomba/routes
+      - ./config:/var/www/lomba/config
+      - ./artisan:/var/www/lomba/artisan
+      # Migration files: bind-mount read-only agar file migration baru
+      # terlihat di dalam container tanpa men-shadow database.sqlite.
+      - ./database/migrations:/var/www/lomba/database/migrations:ro
+      # OPcache dev: validasi timestamp ON -> perubahan PHP/Blade terlihat
+      # dalam ~2 detik tanpa restart/rebuild. HANYA aktif saat mode dev.
+      - ./docker/php/zzz-dev-opcache.ini:/usr/local/etc/php/conf.d/zzz-dev-opcache.ini:ro
+
+  lomba-web:
+    # !override = ganti SELURUH daftar volumes milik lomba-web dari
+    # compose.yaml (merge Compose menambahkan; kita memerlukan penggantian
+    # agar mount default.conf produksi diganti conf dev).
+    # Catatan: butuh docker compose >= 2.24 (tag merge !override);
+    # bila versi lebih lama, perintah akan gagal dengan jelas.
+    volumes: !override
+      # public/ TETAP bind-mount host seperti di compose.yaml (lomba-web).
+      - ./:/var/www/lomba:ro
+      # Konfigurasi nginx DEV: static asset no-cache (validasi ulang selalu).
+      - ./docker/nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro

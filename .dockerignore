@@ -1,0 +1,31 @@
+# Dependencies, tooling & data lokal yang tidak boleh masuk image.
+.git
+.gitignore
+.github
+
+# Tooling container (dibangun dari Dockerfile, bukan disalin)
+compose.yaml
+Dockerfile
+.dockerignore
+
+# Environment tidak di-bake ke image — disuntik lewat env_file saat run.
+.env
+.env.*
+!.env.docker
+
+# Node/frontend (frontend Lomba memakai JS statis, tanpa langkah build)
+node_modules
+/public/build
+
+# Vendor & artefak build lokal (vendor dibuat ulang saat build image)
+/vendor
+/bootstrap/cache/*
+/bootstrap/cache/**
+
+# Data lokal → disediakan via named volume saat run
+/database/*.sqlite*
+/database/*.sqlite-*
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
