@@ -3,6 +3,7 @@
 use App\Http\Controllers\ConfigController;
 use App\Http\Controllers\GameController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ScoreExportController;
 use App\Http\Controllers\SoundController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +13,7 @@ Route::get('/', [PageController::class, 'display'])->name('home');
 Route::get('/display', [PageController::class, 'display'])->name('display');
 Route::get('/participant', [PageController::class, 'participant'])->name('participant');
 Route::get('/operator', [PageController::class, 'operator'])->name('operator');
+Route::get('/operator/export-nilai', ScoreExportController::class)->name('operator.export-nilai');
 
 Route::name('game.')->prefix('api')->group(function () {
     Route::get('/game/state', [GameController::class, 'state'])->name('state');

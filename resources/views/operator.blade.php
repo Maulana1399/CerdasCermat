@@ -80,6 +80,8 @@
         <span class="pill gold" id="phase-label">SIAP</span>
         <span class="pill" id="question-no">SOAL #0</span>
         <span class="pill" id="mode-label">BUZZER</span>
+        <a class="btn" id="export-nilai-btn" href="{{ route('operator.export-nilai') }}"
+           style="margin-left:auto; font-size:14px; padding:10px 16px; text-decoration:none; text-transform:uppercase;">Export Nilai</a>
     </div>
 
     <div class="mode-selector" id="mode-selector">
